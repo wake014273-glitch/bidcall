@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>叫价 BIDCALL · 一切招式都要竞拍</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --gold:#d8ab4a; --gold2:#f2d68b; --paper:#f4e9d2; --blood:#c0392b; --mint:#5fd3a6; --dim:#8a7f6d;
+  }
+  html,body{height:100%}
+  body{
+    background:radial-gradient(1200px 700px at 50% -10%, #2a1d0c 0%, #150e07 45%, #0b0805 100%);
+    color:#e8ddc8; font-family:"Segoe UI","Microsoft YaHei","PingFang SC",system-ui,sans-serif;
+    display:flex; justify-content:center; padding:18px;
+  }
+  #app{width:100%; max-width:1120px; display:flex; flex-direction:column; gap:14px}
+  header.house{display:flex;align-items:baseline;gap:14px;border-bottom:1px solid #3a2b16;padding-bottom:10px}
+  header.house h1{font-size:20px;letter-spacing:.42em;color:var(--gold2);font-weight:600}
+  header.house .sub{font-size:12px;color:var(--dim);letter-spacing:.12em}
+  header.house .spacer{flex:1}
+  header.house .round{font-size:12px;color:var(--gold);letter-spacing:.1em}
+  main{display:grid;grid-template-columns:1fr 320px;gap:14px;align-items:start}
+  @media (max-width:900px){ main{grid-template-columns:1fr} }
+  .board{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .side{border:1px solid #33261099;background:linear-gradient(180deg,#1a120a,#120c07);border-radius:12px;padding:12px}
+  .side.foe{border-color:#5a2626}
+  .side .who{font-size:12px;letter-spacing:.16em;color:var(--dim);display:flex;justify-content:space-between;gap:8px}
+  .side .nm{color:#e8ddc8;font-size:14px;letter-spacing:.08em}
+  .hpbar{height:12px;border-radius:8px;background:#0a0704;border:1px solid #3a2b16;margin:8px 0 6px;overflow:hidden}
+  .hpfill{height:100%;background:linear-gradient(90deg,#8e2b22,#c0392b);transition:width .35s}
+  .hpfill.mint{background:linear-gradient(90deg,#2e6f57,#5fd3a6)}
+  .nums{display:flex;gap:14px;font-size:13px;color:#cbbfa6;font-variant-numeric:tabular-nums;flex-wrap:wrap}
+  .nums b{color:var(--gold2);font-size:15px}
+  .shield{color:#7fb7e8}
+  .power{color:var(--gold)}
+  .lotzone{margin-top:14px;min-height:186px;display:flex;justify-content:center}
+  .lot{width:100%;max-width:430px;background:var(--paper);color:#20180d;border-radius:10px;padding:16px 18px;position:relative;
+    box-shadow:0 18px 40px -18px #000, 0 0 0 1px #c9b790 inset;font-family:"Songti SC","SimSun",Georgia,serif}
+  .lot:after{content:"";position:absolute;inset:7px;border:1px solid #b9a37a55;border-radius:6px;pointer-events:none}
+  .lot .tag{font-size:11px;letter-spacing:.2em;color:#8a6f3e}
+  .lot .name{font-size:27px;font-weight:700;letter-spacing:.14em;margin:6px 0 4px}
+  .lot .txt{font-size:14px;color:#4a3a22}
+  .lot .cost{margin-top:10px;font-size:12px;color:#8a6f3e;letter-spacing:.1em}
+  .lot.ult{border:2px solid #8e2b22}
+  .lot.ult .tag{color:#a83226}
+  .stamp{position:absolute;right:14px;top:12px;font-size:11px;border:1px solid #a83226;color:#a83226;padding:2px 6px;border-radius:4px;transform:rotate(-6deg)}
+  .panel{border:1px solid #33261099;background:#120c0788;border-radius:12px;padding:14px}
+  .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .lbl{font-size:12px;color:var(--dim);letter-spacing:.14em;width:100%;margin-bottom:8px}
+  button{font:inherit;cursor:pointer;border-radius:8px;padding:9px 14px;font-size:13px;letter-spacing:.06em;
+    background:#1d150c;color:#e8ddc8;border:1px solid #4a3819;transition:.15s}
+  button:hover:not(:disabled){background:#2a1e10;border-color:var(--gold);color:#fff6e0}
+  button:disabled{opacity:.32;cursor:not-allowed}
+  button.gold{background:linear-gradient(180deg,#e6c169,#c69a37);color:#1a1206;border:none;font-weight:700}
+  button.gold:hover:not(:disabled){filter:brightness(1.08)}
+  button.ghost{background:transparent;border-color:#3a2b16;color:#9d917c}
+  button.drop{padding:16px 26px;font-size:17px;letter-spacing:.2em}
+  .bidnow{font-size:28px;color:var(--gold2);font-variant-numeric:tabular-nums;letter-spacing:.04em}
+  .hint{font-size:12px;color:#9d917c;line-height:1.7}
+  .hint em{color:var(--gold);font-style:normal}
+  #log{display:flex;flex-direction:column;gap:6px;max-height:460px;overflow:auto;font-size:12.5px;line-height:1.55}
+  #log div{padding:6px 8px;border-left:2px solid #3a2b16;background:#120c0744;color:#b6a992;border-radius:0 6px 6px 0}
+  #log div.hi{border-left-color:var(--gold);color:#eadfc8}
+  #log div.bad{border-left-color:var(--blood);color:#e2b0ab}
+  #log div.good{border-left-color:var(--mint);color:#a9e5cd}
+  .overlay{position:fixed;inset:0;background:#070503ee;display:flex;align-items:center;justify-content:center;padding:20px;z-index:9}
+  .card{width:100%;max-width:560px;border:1px solid #4a3819;border-radius:14px;padding:26px;background:linear-gradient(180deg,#1a120a,#0d0906)}
+  .card h2{font-size:22px;letter-spacing:.2em;color:var(--gold2);margin-bottom:6px}
+  .card p{font-size:13px;color:#a89b84;line-height:1.85;margin-bottom:10px}
+  .card .rule{font-size:12.5px;color:#8f8371;line-height:1.9;border-top:1px solid #2a2013;padding-top:12px;margin-top:6px}
+  .card .rule b{color:var(--gold)}
+  .foes{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0 18px}
+  .foe-pick{flex:1;min-width:150px;text-align:left;padding:12px}
+  .foe-pick .n{color:var(--gold2);font-size:14px;letter-spacing:.1em}
+  .foe-pick .d{font-size:11.5px;color:#8f8371;margin-top:5px;line-height:1.5}
+  .kbd{font-size:11px;color:#6f6555}
+  .stat{display:grid;grid-template-columns:110px 1fr;gap:6px 12px;font-size:12.5px;color:#a89b84;margin:12px 0 18px}
+  .stat b{color:var(--gold2)}
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="house">
+    <h1>叫价</h1>
+    <div class="sub">BIDCALL · 一切招式都要竞拍</div>
+    <div class="spacer"></div>
+    <div class="round" id="roundLbl"></div>
+  </header>
+  <main>
+    <section>
+      <div class="board" id="board"></div>
+      <div class="lotzone" id="lotzone"></div>
+      <div class="panel" id="actionzone" style="margin-top:14px"></div>
+    </section>
+    <aside class="panel">
+      <div class="lbl">落槌记录</div>
+      <div id="log"></div>
+    </aside>
+  </main>
+</div>
+<div id="overlay" class="overlay" style="display:none"></div>
+
+<script>
+'use strict';
+(function(){
+const $ = s => document.querySelector(s);
+const other = s => s === 'you' ? 'foe' : 'you';
+const rnd = (a,b) => a + Math.random()*(b-a);
+const clamp = (v,a,b) => v<a?a:v>b?b:v;
+const label = s => s === 'you' ? '你' : S.foe.name;
+
+/* ---------------- 拍品 ---------------- */
+const LOTS = {
+  jab:     {n:'重击',   dmg:8,  cost:1, tag:'招式',   txt:'造成 8 点伤害'},
+  heavy:   {n:'强击',   dmg:14, cost:2, tag:'招式',   txt:'造成 14 点伤害'},
+  guard:   {n:'格挡',   sh:10,  cost:1, tag:'招式',   txt:'获得 10 点护盾'},
+  drain:   {n:'汲血',   dmg:6, heal:6, cost:2, tag:'招式', txt:'造成 6 伤害,并回复 6 点生命'},
+  mend:    {n:'手术',   heal:12, cost:2, tag:'馆藏',  txt:'回复 12 点生命'},
+  garnish: {n:'催收',   steal:3, cost:1, tag:'场务',  txt:'对方失去 3 筹码,你获得 3'},
+  ult:     {n:'蓄力斩', dmg:18, cost:3, tag:'对方手牌', txt:'造成 18 点伤害'}
+};
+const DECK = ['jab','heavy','guard','drain','mend','garnish','jab','heavy','guard','drain','mend','garnish','jab'];
+
+const FOES = [
+  {name:'账房先生', hp:28, chips:5, regen:3, aggro:0.92, persona:'miser', d:'手很紧。守价如命,只为一击致命的牌出价。'},
+  {name:'银锤',     hp:46, chips:8, regen:3, aggro:1.0, persona:'dragger', d:'喜欢把价格抬到你还差一点的地方,再松手。'},
+  {name:'庄家',     hp:52, chips:8, regen:4, aggro:1.05, persona:'shark',  d:'他自己印筹码。你没钱的时候,他就用全付把你榨干。'}
+];
+
+let S = null, dutchTimer = null;
+
+/* ---------------- 建局 ---------------- */
+function newBattle(idx){
+  clearInterval(dutchTimer); dutchTimer = null;
+  const f = FOES[idx];
+  S = {
+    opp: idx, round: 0, pricing: 'you', phase: 'fmt', format: null,
+    you:{hp:32, max:32, chips:5, regen:3, shield:0, lastBid:0, name:'你'},
+    foe:{hp:f.hp, max:f.hp, chips:f.chips, regen:f.regen, shield:0, lastBid:0, aggro:f.aggro, persona:f.persona, name:f.name, d:f.d},
+    deck: [], roundLots: [], lot: null, bid: 0, high: null, turn: 'you', sealedPick: 0,
+    foeSealed: 0, dutch: null, dutchThreshold: 0, over: null,
+    stat:{won:0, lost:0, spent:0, feeIn:0, feeOut:0, mortgaged:0, dmgDealt:0, dmgTaken:0, rounds:0},
+    log: []
+  };
+  const d = DECK.slice();
+  for (let i=d.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [d[i],d[j]]=[d[j],d[i]]; }
+  d.splice(4, 0, 'ult');
+  S.deck = d;
+  say('场主落座。'+f.name+' 把一叠筹码推上桌。','hi');
+  say('规则:没有技能栏。你想要什么,就自己出价。','');
+  startRound();
+  render();
+}
+
+function startRound(){
+  S.round++;
+  if (S.deck.length < 2) S.deck = S.deck.concat(DECK.slice());
+  S.roundLots = [S.deck.shift(), S.deck.shift()];
+  awardChips();
+  say(`── 第 ${S.round} 回合,两件拍品上桌 ──`, 'hi');
+  nextLot();
+}
+
+function awardChips(){
+  for (const s of ['you','foe']){
+    const before = S[s].chips;
+    S[s].chips = Math.min(10, S[s].chips + S[s].regen);
+    if (S[s].chips > before) say(`${label(s)} 领到筹码 +${S[s].chips-before}(共 ${S[s].chips})`);
+  }
+}
+
+function nextLot(){
+  if (S.over) return;
+  if (S.roundLots.length === 0){ startRound(); return; }
+  const key = S.roundLots.shift();
+  const def = LOTS[key];
+  S.lot = {key:key, n:def.n, dmg:def.dmg, heal:def.heal, sh:def.sh, steal:def.steal, cost:def.cost, tag:def.tag, txt:def.txt};
+  S.bid = def.cost - 1; S.high = null; S.turn = S.pricing;
+  S.sealedPick = 0; S.foeSealed = 0; S.dutch = null;
+  S.you.lastBid = 0; S.foe.lastBid = 0;
+  S.phase = 'fmt'; S.format = null;
+  say(`【${def.n}】上桌 · 起拍 ${def.cost} · 定价权:${S.pricing==='you'?'你':S.foe.name}`, 'hi');
+  if (S.pricing === 'foe') setTimeout(foeChooseFormat, 420);
+  render();
+}
+
+/* ---------------- AI 估价 ---------------- */
+function value(lot, side){
+  const me = S[side], him = S[other(side)];
+  let v = 0;
+  if (lot.dmg) v += lot.dmg * 0.55;
+  if (lot.heal) v += (me.hp <= me.max*0.55 ? lot.heal*0.5 : lot.heal*0.12);
+  if (lot.sh)  v += (me.hp <= me.max*0.6 ? 4.6 : 3.0);
+  if (lot.steal) v += 5.4;
+  if (lot.key === 'ult') v += 2.2;
+  if (lot.dmg && him.hp <= lot.dmg) v += 4.5;
+  return v;
+}
+function foeWants(lot, extra){ return value(lot,'foe') * S.foe.aggro + rnd(-1.1, 1.1) + (extra||0); }
+
+function foeChooseFormat(){
+  if (!S || S.phase !== 'fmt' || S.pricing !== 'foe') return;
+  const want = foeWants(S.lot);
+  const chips = S.foe.chips, mine = S.you.chips;
+  let f = 'english';
+  if (S.foe.persona === 'shark' && S.you.chips <= 2) f = 'allpay';
+  else if (want > chips*1.2) f = 'allpay';
+  else if (chips > mine + 2) f = 'sealed';
+  else if (want < 3 && chips <= 3) f = 'dutch';
+  chooseFormat(f, true);
+}
+
+/* ---------------- 竞拍 ---------------- */
+function chooseFormat(f, byFoe){
+  if (S.phase !== 'fmt') return;
+  S.format = f; S.phase = f;
+  const names = {english:'公开加价', sealed:'暗标', allpay:'全付', dutch:'降价拍'};
+  say(`${byFoe ? S.foe.name : '你'} 行使定价权 —— 本件【${names[f]}】`, byFoe?'bad':'good');
+  if (f === 'english'){
+    S.bid = S.lot.cost - 1; S.high = null; S.turn = S.pricing;
+    render();
+    if (S.pricing === 'foe') setTimeout(foeEnglishTurn, 520);
+  } else if (f === 'sealed' || f === 'allpay'){
+    S.foeSealed = Math.round(clamp(foeWants(S.lot, (f==='allpay' ? -1.4 : 0) + (S.pricing==='foe' ? 0 : 0.7)), 0, S.foe.chips));
+    if (S.pricing === 'foe') say(`${S.foe.name} 已在纸上写好数字,笔尖抵着桌布。`,'');
+    render();
+  } else if (f === 'dutch'){
+    const cap = Math.max(S.you.chips, S.foe.chips);
+    S.dutch = {price: clamp(Math.max(S.lot.cost + 2, cap), 3, 9), live: true};
+    S.dutchThreshold = Math.round(clamp(foeWants(S.lot), 1, Math.min(9, S.foe.chips)));
+    render(); runDutch();
+  }
+}
+
+function runDutch(){
+  clearInterval(dutchTimer);
+  dutchTimer = setInterval(function(){
+    if (!S || S.phase !== 'dutch' || !S.dutch || !S.dutch.live){ clearInterval(dutchTimer); return; }
+    S.dutch.price -= 1;
+    if (S.dutch.price < 1){ clearInterval(dutchTimer); return dutchDone('none'); }
+    render();
+    const foeCan = S.foe.chips >= S.dutch.price;
+    const youCan = S.you.chips >= S.dutch.price;
+    if (!foeCan && !youCan){ clearInterval(dutchTimer); return dutchDone('none'); }
+    if (foeCan && S.dutch.price <= S.dutchThreshold && Math.random() < 0.82){
+      clearInterval(dutchTimer); dutchDone('foe');
+    }
+  }, 620);
+}
+
+function dutchDone(who){
+  if (S.phase !== 'dutch') return;
+  S.dutch.live = false;
+  if (who === 'none'){
+    say(`无人应价,【${S.lot.n}】流拍,被场主收回。`);
+    return finishLot(null, 0, 'dutch');
+  }
+  const price = S.dutch.price;
+  say(`${who==='you'?'你':S.foe.name} 在 ${price} 落槌。`, who==='you'?'good':'bad');
+  finishLot(who, price, 'dutch');
+}
+
+function englishOpen(){
+  if (S.phase !== 'english' || S.turn !== 'you' || S.high !== null) return;
+  const nb = S.lot.cost;
+  if (nb > S.you.chips) return englishPass('you');
+  S.you.lastBid = nb; S.bid = nb; S.high = 'you'; S.turn = 'foe';
+  say(`你 以起拍价 ${nb} 应价。`);
+  render(); setTimeout(foeEnglishTurn, 520);
+}
+
+function englishRaise(k){
+  if (S.phase !== 'english' || S.turn !== 'you') return;
+  const nb = S.bid + k;
+  if (nb > S.you.chips) return;
+  S.you.lastBid = nb; S.bid = nb; S.high = 'you'; S.turn = 'foe';
+  say(`你 加价到 ${nb}。`);
+  render(); setTimeout(foeEnglishTurn, 520);
+}
+
+function foeEnglishTurn(){
+  if (!S || S.phase !== 'english' || S.turn !== 'foe') return;
+  const want = foeWants(S.lot);
+  const next = S.bid + 1;
+  let cap = want;
+  if (S.foe.persona === 'dragger' && S.high === 'you') cap = want + 2.4;      // 抬价型:明知不值也顶一锤,逼你出血
+  if (S.foe.persona === 'shark' && S.lot.dmg && S.you.hp <= S.lot.dmg + 4) cap = want + 3.5;
+  const eager = S.foe.persona === 'dragger' ? Math.random() < 0.62 : true;
+  if (next <= cap && next <= S.foe.chips && eager){
+    S.foe.lastBid = next; S.bid = next; S.high = 'foe'; S.turn = 'you';
+    say(`${S.foe.name} 加价到 ${next}。`,'bad');
+    render(); return;
+  }
+  englishPass('foe');
+}
+
+function englishPass(side){
+  if (S.phase !== 'english') return;
+  if (S.high === null){
+    const w = other(side), price = S.lot.cost;
+    if (S[w].chips < price){ say('无人掏得起起拍价,流拍。'); return finishLot(null, 0, 'english'); }
+    say(`${label(side)} 不应价 —— ${label(w)} 以起拍价 ${price} 白拿【${S.lot.n}】`, w==='you'?'good':'bad');
+    return finishLot(w, price, 'english');
+  }
+  say(`${label(side)} 放弃,锤落 ${S.bid}。`, side==='you'?'bad':'good');
+  finishLot(S.high, S.bid, 'english');
+}
+
+function submitSealed(){
+  const allpay = S.format === 'allpay';
+  const you = clamp(S.sealedPick, 0, S.you.chips);
+  const foe = clamp(S.foeSealed, 0, S.foe.chips);
+  S.you.lastBid = you; S.foe.lastBid = foe;
+  say(`开标 —— 你 ${you} / ${S.foe.name} ${foe}`, 'hi');
+  let w, price;
+  if (you === foe){
+    if (allpay){
+      w = S.pricing; price = w==='you' ? you : foe;
+      say('同价,定价权方得。','hi');
+    } else {
+      const ph = S.pricing, base = ph==='you' ? you : foe;
+      if (S[ph].chips >= base + 1){
+        w = ph; price = base + 1;
+        say(`同价 —— 定价权方加一锤成交(付出 ${price})。`,'hi');
+      } else {
+        w = other(ph); price = base;
+        say(`同价,但定价权方付不起加锤,${label(w)} 得。`,'hi');
+      }
+    }
+  } else {
+    w = you > foe ? 'you' : 'foe';
+    price = w==='you' ? you : foe;
+  }
+  if (allpay){
+    S.you.chips -= you; S.stat.spent += you;
+    S.foe.chips -= foe;
+    say(`全付:你付 ${you},对方付 ${foe},各自出血。`,'hi');
+  }
+  finishLot(w, price, allpay ? 'allpay' : 'sealed');
+}
+
+/* ---------------- 结算 ---------------- */
+function finishLot(winner, price, mode){
+  S.phase = 'resolve';
+  if (winner){
+    const pay = (mode === 'allpay') ? 0 : Math.min(price, S[winner].chips);
+    S[winner].chips -= pay;
+    if (winner === 'you' && pay > 0) S.stat.spent += pay;
+    say(`${label(winner)} 拿下【${S.lot.n}】${pay>0?`,付出 ${pay} 筹码`:''}。`, winner==='you'?'good':'bad');
+    if (mode !== 'allpay'){
+      const loser = other(winner);
+      const fee = mode === 'dutch' ? 0 : Math.floor(S[loser].lastBid/2);
+      if (fee > 0){
+        const p = Math.min(fee, S[loser].chips);
+        S[loser].chips -= p;
+        if (loser === 'you') S.stat.feeOut += p; else S.stat.feeIn += p;
+        say(`落槌费:${label(loser)} 付 ${p}。`, loser==='you'?'bad':'good');
+      }
+    }
+    applyLot(winner, S.lot);
+    S.stat[winner==='you' ? 'won' : 'lost']++;
+    S.pricing = other(winner);
+    say(`定价权交给 ${label(S.pricing)}。`,'hi');
+  }
+  render();
+  if (checkOver()) return;
+  setTimeout(function(){ if (S && S.phase==='resolve') nextLot(); }, 950);
+}
+
+function applyLot(w, lot){
+  const me = S[w], him = S[other(w)];
+  if (lot.dmg) damage(other(w), lot.dmg, w);
+  if (lot.heal){ me.hp = Math.min(me.max, me.hp + lot.heal); say(`${label(w)} 回复 ${lot.heal} 点生命。`, w==='you'?'good':'bad'); }
+  if (lot.sh){ me.shield += lot.sh; say(`${label(w)} 获得 ${lot.sh} 点护盾。`, w==='you'?'good':'bad'); }
+  if (lot.steal){
+    const t = Math.min(him.chips, lot.steal);
+    him.chips -= t; me.chips = Math.min(10, me.chips + t);
+    say(`${label(w)} 从对方账上划走 ${t} 筹码。`, w==='you'?'good':'bad');
+  }
+}
+
+function damage(target, n, from){
+  const t = S[target];
+  let left = n;
+  if (t.shield > 0){
+    const ab = Math.min(t.shield, left);
+    t.shield -= ab; left -= ab;
+    if (ab > 0) say(`护盾抵消 ${ab} 点。`);
+  }
+  t.hp = Math.max(0, t.hp - left);
+  if (target === 'you') S.stat.dmgTaken += left; else S.stat.dmgDealt += left;
+  say(`${label(from)} 打出 ${n} 点伤害${left>0?`(${label(target)} 剩 ${t.hp})`:''}。`, from==='you'?'good':'bad');
+}
+
+function mortgage(){
+  if (S.over || S.you.hp <= 6) return;
+  S.you.hp -= 6; S.you.chips = Math.min(10, S.you.chips + 4); S.stat.mortgaged++;
+  say('你把 6 点血抵押给场主,换回 4 枚筹码。','hi');
+  render();
+}
+
+function checkOver(){
+  if (S.over) return true;
+  if (S.foe.hp <= 0) S.over = 'win';
+  else if (S.you.hp <= 0) S.over = 'lose';
+  if (S.over){ render(); return true; }
+  return false;
+}
+
+/* ---------------- 渲染 ---------------- */
+function say(t, cls){ S.log.unshift({t, cls:cls||''}); if (S.log.length > 60) S.log.pop(); }
+
+function render(){
+  if (!S) return;
+  const u = S.you, f = S.foe;
+  $('#roundLbl').textContent = S.over ? '' : `回合 ${S.round} · 定价权:${S.pricing==='you'?'你':f.name}`;
+  $('#board').innerHTML = `
+    <div class="side">
+      <div class="who"><span class="nm">你 · 落魄拍卖师</span><span class="power">${S.pricing==='you'?'◆ 定价权':''}</span></div>
+      <div class="hpbar"><div class="hpfill mint" style="width:${u.hp/u.max*100}%"></div></div>
+      <div class="nums"><span>血 <b>${u.hp}</b>/${u.max}</span><span class="shield">盾 ${u.shield}</span><span>筹码 <b>${u.chips}</b></span></div>
+    </div>
+    <div class="side foe">
+      <div class="who"><span class="nm">${f.name}</span><span class="power">${S.pricing==='foe'?'◆ 定价权':''}</span></div>
+      <div class="hpbar"><div class="hpfill" style="width:${f.hp/f.max*100}%"></div></div>
+      <div class="nums"><span>血 <b>${f.hp}</b>/${f.max}</span><span class="shield">盾 ${f.shield}</span><span>筹码 <b>${f.chips}</b></span></div>
+    </div>`;
+
+  const L = S.lot;
+  $('#lotzone').innerHTML = L ? `
+    <div class="lot ${L.key==='ult'?'ult':''}">
+      <div class="tag">${L.tag}</div>
+      ${L.key==='ult'?'<div class="stamp">原属对方手牌</div>':''}
+      <div class="name">${L.n}</div>
+      <div class="txt">${L.txt}</div>
+      <div class="cost">起拍价 ${L.cost} 筹码</div>
+    </div>` : '';
+
+  $('#actionzone').innerHTML = actionHTML();
+  $('#log').innerHTML = S.log.map(function(e){ return `<div class="${e.cls}">${e.t}</div>`; }).join('');
+  drawOverlay(S.over ? overlayHTML() : '');
+}
+
+function actionHTML(){
+  if (S.over) return `<div class="hint">本局结束。<em>点击遮罩空白处重新入座。</em></div>`;
+  const f = S.foe.name, u = S.you;
+  if (S.phase === 'fmt'){
+    if (S.pricing === 'foe')
+      return `<div class="lbl">对方正在决定竞拍方式…</div><div class="hint">${f} 握着定价权:他能决定这一件是明着抢、暗着抢,还是让你先付钱。</div>`;
+    return `<div class="lbl">你持有定价权 · 选择本件拍品的竞拍方式</div>
+      <div class="row">
+        <button data-act="fmt:english" class="gold">公开加价 <span class="kbd">轮流加价,可拖价</span></button>
+        <button data-act="fmt:sealed">暗标 <span class="kbd">同时出价,一锤定音</span></button>
+        <button data-act="fmt:allpay">全付 <span class="kbd">双方都必须付钱</span></button>
+        <button data-act="fmt:dutch">降价拍 <span class="kbd">谁先忍不住谁付高价</span></button>
+      </div>
+      <div class="hint" style="margin-top:10px">公开加价<em>慢慢磨</em>;暗标<em>一锤定音</em>;全付<em>用钱砸掉对方钱包</em>;降价拍<em>赌他不敢要</em>。</div>`;
+  }
+  if (S.phase === 'english'){
+    const mine = S.turn === 'you';
+    const canM = u.hp > 6 && u.chips < 10;
+    return `<div class="lbl">公开加价 · ${S.bid<1?'无人应价':('当前 '+S.bid+' 筹码')} · ${S.high?('领先:'+label(S.high)):'等待首个应价'}</div>
+      <div class="row">
+        ${S.high === null
+          ? `<button data-act="open" class="gold" ${mine && S.lot.cost<=u.chips?'':'disabled'}>以起拍价 ${S.lot.cost} 应价</button>`
+          : `<button data-act="bid:1" class="gold" ${mine && S.bid+1<=u.chips?'':'disabled'}>加价到 ${S.bid+1}</button>
+             <button data-act="bid:2" ${mine && S.bid+2<=u.chips?'':'disabled'}>加价到 ${S.bid+2}</button>
+             <button data-act="bid:3" ${mine && S.bid+3<=u.chips?'':'disabled'}>加价到 ${S.bid+3}</button>`}
+        <button data-act="pass" class="ghost" ${mine?'':'disabled'}>放弃</button>
+        <button data-act="mortgage" class="ghost" ${canM?'':'disabled'}>抵押 6 血 → 4 筹码</button>
+      </div>
+      <div class="hint" style="margin-top:10px">${mine?'轮到你了。':'对方正在掂量…'} 输家要付<em>落槌费</em>(自己最高出价的一半)—— 把价格抬起来,是能伤到他的。</div>`;
+  }
+  if (S.phase === 'sealed' || S.phase === 'allpay'){
+    const allpay = S.phase === 'allpay';
+    const max = Math.min(10, u.chips);
+    let btns = '';
+    for (let i=0;i<=max;i++) btns += `<button data-act="num:${i}" class="${S.sealedPick===i?'gold':''}">${i}</button>`;
+    return `<div class="lbl">${allpay?'全付':'暗标'} · 你的出价 <span class="bidnow">${S.sealedPick}</span> · 可用 ${u.chips}</div>
+      <div class="row">${btns}</div>
+      <div class="row" style="margin-top:10px">
+        <button data-act="confirm" class="gold">落笔封标</button>
+        <button data-act="mortgage" class="ghost" ${u.hp>6 && u.chips<10?'':'disabled'}>抵押 6 血 → 4 筹码</button>
+      </div>
+      <div class="hint" style="margin-top:10px">${allpay?'<em>双方出价都要真金白银付出去</em>,高出者得。撕破脸的打法。':'同时开标;同价时定价权方加一锤胜出。输家付一半落槌费。'}</div>`;
+  }
+  if (S.phase === 'dutch'){
+    if (!S.dutch) return '';
+    return `<div class="lbl">降价拍 · 价格正在下落</div>
+      <div class="row"><div class="bidnow">${S.dutch.price} 筹码</div>
+        <button data-act="drop" class="gold drop" ${u.chips>=S.dutch.price?'':'disabled'}>落槌!</button></div>
+      <div class="hint" style="margin-top:10px">谁先按,谁就以<em>当前价</em>买走。等得越久越便宜 —— 但对方也在等。</div>`;
+  }
+  if (S.phase === 'resolve') return `<div class="lbl">锤已落。</div><div class="hint">结算中…</div>`;
+  return '';
+}
+
+/* ---------------- 遮罩 ---------------- */
+function overlayHTML(){
+  const win = S.over === 'win';
+  const st = S.stat;
+  return `<div class="card">
+    <h2>${win?'你赢得了这张桌子':'你破产了'}</h2>
+    <p>${win?'最后一锤落下,场主把你的名字刻进账本。你赢下的不是招式,是别人掏不起的东西。'
+           :'筹码见底,锤声也救不了你。在这个厅里,没钱的人只能看着别人打完。'}</p>
+    <div class="stat">
+      <span>赢下拍品</span><b>${st.won}</b>
+      <span>被抢走</span><b>${st.lost}</b>
+      <span>花掉筹码</span><b>${st.spent}</b>
+      <span>付落槌费</span><b>${st.feeOut}</b>
+      <span>抵押血</span><b>${st.mortgaged} 次</b>
+      <span>坚持回合</span><b>${S.round}</b>
+    </div>
+    <div class="row"><button class="gold" data-act="restart">再入座</button></div>
+  </div>`;
+}
+function drawOverlay(html){
+  const o = $('#overlay');
+  if (!html){ o.style.display='none'; o.innerHTML=''; }
+  else { o.style.display='flex'; o.innerHTML = html; }
+}
+function titleScreen(){
+  S = null;
+  $('#board').innerHTML = ''; $('#lotzone').innerHTML = ''; $('#actionzone').innerHTML = '';
+  $('#roundLbl').textContent = ''; $('#log').innerHTML = '';
+  const picks = FOES.map(function(f,i){ return `<button class="foe-pick" data-act="start:${i}">
+      <div class="n">${f.name}</div><div class="d">${f.hp} 血 · 每回合 +${f.regen} 筹码 · 开局 ${f.chips} 筹码<br>${f.d}</div></button>`; }).join('');
+  drawOverlay(`<div class="card">
+    <h2>叫 价</h2>
+    <p>这是一个所有东西都要竞价的城邦。你没有任何技能 —— <b style="color:var(--gold2)">你的每一次出手,都得从别人嘴里抢。</b></p>
+    <div class="rule">
+      <b>1</b> 每回合两件拍品上桌:招式、护盾、回血,甚至对方的杀招。<br>
+      <b>2</b> 每件拍品由「定价权」持有者决定竞价方式:公开加价 / 暗标 / 全付 / 降价拍。<br>
+      <b>3</b> 赢家付自己的出价;输家付「落槌费」= 自己最高出价的一半。没出价就不用付。<br>
+      <b>4</b> 暗标与全付若同价,由定价权方「加一锤」胜出(多付 1 筹码)。<br>
+      <b>5</b> <b>每件拍品的输家,获得下一件的定价权。</b>—— 输了,你就拿到玩法的主导权。<br>
+      <b>6</b> 任何时候可把 6 点血抵押给场主换 4 筹码:血就是你的流动资金。
+    </div>
+    <div class="foes">${picks}</div>
+    <div class="hint">选一个对手入座。把他打空,你就赢了这张桌子。</div>
+  </div>`);
+}
+
+/* ---------------- 输入 ---------------- */
+document.addEventListener('click', function(e){
+  const btn = e.target.closest('[data-act]');
+  if (!btn){
+    if (e.target.id === 'overlay' && S && S.over) titleScreen();
+    return;
+  }
+  const act = btn.getAttribute('data-act');
+  if (act.indexOf('start:') === 0){ newBattle(+act.split(':')[1]); return; }
+  if (act === 'restart'){ const i = S ? S.opp : 0; newBattle(i); return; }
+  if (act.indexOf('fmt:') === 0){ chooseFormat(act.split(':')[1], false); return; }
+  if (act === 'open'){ englishOpen(); return; }
+  if (act.indexOf('bid:') === 0){ englishRaise(+act.split(':')[1]); return; }
+  if (act === 'pass'){ if (S.phase==='english' && S.turn==='you') englishPass('you'); return; }
+  if (act.indexOf('num:') === 0){ S.sealedPick = +act.split(':')[1]; render(); return; }
+  if (act === 'confirm'){ submitSealed(); return; }
+  if (act === 'drop'){
+    if (S.dutch && S.dutch.live && S.you.chips >= S.dutch.price){
+      clearInterval(dutchTimer); dutchDone('you');
+    } return;
+  }
+  if (act === 'mortgage'){ mortgage(); return; }
+});
+
+/* ---------------- 调试句柄 ---------------- */
+window.__G = {
+  snap: function(){ return S ? {
+    opp:S.opp, round:S.round, phase:S.phase, format:S.format, pricing:S.pricing,
+    uHp:S.you.hp, uChips:S.you.chips, fHp:S.foe.hp, fChips:S.foe.chips,
+    won:S.stat.won, lost:S.stat.lost, spent:S.stat.spent, feeOut:S.stat.feeOut,
+    mortgaged:S.stat.mortgaged, over:S.over,
+    face: S.lot ? {key:S.lot.key, dmg:S.lot.dmg||0, heal:S.lot.heal||0, cost:S.lot.cost} : null
+  } : null; },
+  dev: {
+    start: function(i){ newBattle(i); },
+    fmt: function(f){ if (S && S.phase==='fmt'){ S.pricing='you'; chooseFormat(f,false); } },
+    over: function(w){ if (S){ S.over = w; render(); } },
+    log: function(){ return S ? S.log.slice(0,8).map(function(e){ return e.t; }) : []; }
+  }
+};
+
+/* 场景跳转(无头验证用) */
+(function boot(){
+  const q = new URLSearchParams(location.search);
+  const scene = q.get('scene');
+  if (!scene){ titleScreen(); return; }
+  newBattle(+(q.get('opp')||0));
+  setTimeout(function(){
+    if (scene === 'play') window.__G.dev.fmt('english');
+    else if (scene === 'sealed') window.__G.dev.fmt('sealed');
+    else if (scene === 'allpay') window.__G.dev.fmt('allpay');
+    else if (scene === 'dutch') window.__G.dev.fmt('dutch');
+    else if (scene === 'end') window.__G.dev.over('win');
+    else if (scene === 'lose') window.__G.dev.over('lose');
+    render();
+  }, 80);
+})();
+
+})();
+</script>
+</body>
+</html>
