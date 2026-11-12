@@ -78,6 +78,21 @@
   .kbd{font-size:11px;color:#6f6555}
   .stat{display:grid;grid-template-columns:110px 1fr;gap:6px 12px;font-size:12.5px;color:#a89b84;margin:12px 0 18px}
   .stat b{color:var(--gold2)}
+  @media (max-width:560px){
+    body{padding:10px}
+    header.house{flex-wrap:wrap;gap:4px 10px;align-items:center}
+    header.house h1{white-space:nowrap;font-size:17px;letter-spacing:.3em}
+    header.house .sub{display:none}
+    header.house .round{font-size:11px}
+    .board{gap:8px}
+    .side{padding:9px}
+    .side .who{font-size:11px}
+    .side .nm{font-size:12.5px}
+    .nums{gap:9px;font-size:12px}
+    .lot .name{font-size:22px}
+    .panel{padding:11px}
+    button{padding:9px 11px;font-size:12.5px}
+  }
 </style>
 </head>
 <body>
